@@ -264,13 +264,13 @@ local function CallbackRequest(callback,store_name,store_scope,request_fn_name,r
 	end
 end
 
-local function ProcessLane(lane)
+local function ProcessLane(attempt_inline,lane)
 	while true do
 		local front_request=lane:PeekFront()
 		if front_request then
 			local RequestFunctionName=front_request.FunctionName
 			if 0<DataStoreService:GetRequestBudgetForRequestType(RequestTypeEnumFromFunctionName[RequestFunctionName]) then
-				RunDoRequest(false,lane:PopFront())
+				RunDoRequest(attempt_inline,lane:PopFront())
 			else
 				break
 			end
@@ -280,14 +280,33 @@ local function ProcessLane(lane)
 	end
 end
 
-game:GetService'RunService'.Stepped:connect(function()
-	--check global_ordered_request_queue
-	ProcessLane(global_ordered_request_queue)
-	--check delivery_request_queue_lanes
-	for lane=1,NRequestTypes do
-		ProcessLane(delivery_request_queue_lanes[lane])
+--check global_ordered_request_queue forever
+local wait=task.wait
+task.spawn(function()
+	while true do
+		--this has to be processed in this contrived way instead of using RunService.Stepped
+		--so that it is guaranteed to process each request to completion
+		local success,err=pcall(ProcessLane,true,global_ordered_request_queue)
+		if not success then
+			print("ProcessLane (ordered) Error:",err)
+		end
+		wait()
 	end
 end)
+--check delivery_request_queue_lanes forever
+for lane=1,NRequestTypes do
+	local delivery_request_queue_lane=delivery_request_queue_lanes[lane]
+	task.spawn(function()
+		while true do
+			--requests in these queues will necessarily not care about order
+			local success,err=pcall(ProcessLane,false,delivery_request_queue_lane)
+			if not success then
+				print("ProcessLane (delivery) Error:",err)
+			end
+			wait()
+		end
+	end)
+end
 
 return {
 	RequestFlags=RequestFlags,
