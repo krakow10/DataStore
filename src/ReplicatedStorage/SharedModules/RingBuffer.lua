@@ -45,7 +45,7 @@ function RingBufferClass:PushBack(value)
 			--move elements
 			move(Buffer,FrontIndex,Capacity,NewFrontIndex,Buffer)
 			--write nil values (from beyond the end of the buffer) to moved elements in order to assist gc by erasing strong references
-			move(Buffer,NewCapacity+1,NewCapacity+(Capacity-FrontIndex),FrontIndex)
+			move(Buffer,NewCapacity+1,NewCapacity+(Capacity-FrontIndex)+1,FrontIndex,Buffer)
 		end
 		self.FrontIndex=NewFrontIndex
 		self.Capacity=NewCapacity
