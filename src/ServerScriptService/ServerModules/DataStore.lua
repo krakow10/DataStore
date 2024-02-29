@@ -148,13 +148,10 @@ local function GetLane(request)
 	return nil
 end
 
---returns inline_success,status,result
-local function DoRequest(attempt_inline,request)
-	local data_store=DataStoreService:GetDataStore(request.StoreName,request.StoreScope)
-	local status,result=pcall(data_store[request.FunctionName],data_store,unpack(request.Args,request.NArgs))
+local function VarArgDoRequest(attempt_inline,request,status,...)
 	if not status then
 		print("DataStore request failed:",request.StoreName,request.StoreScope,request.FunctionName)
-		print("Error:",result)
+		print("Error:",...)
 		--if REQUEST_GUARANTEE_DELIVERY bit is set, push the request into a lane
 		if band(request.Flags,REQUEST_GUARANTEE_DELIVERY)~=0 then
 			local lane=GetLane(request)
@@ -170,13 +167,19 @@ local function DoRequest(attempt_inline,request)
 	end
 	local Thread=request.Thread
 	if Thread then
-		resumePrintErr(Thread,status,unpack(result))
+		resumePrintErr(Thread,status,...)
 	else
-		return attempt_inline,status,result
+		return attempt_inline,status,...
 	end
 end
 
---returns inline_success,status,result
+--returns inline_success,status,...
+local function DoRequest(attempt_inline,request)
+	local data_store=DataStoreService:GetDataStore(request.StoreName,request.StoreScope)
+	return VarArgDoRequest(attempt_inline,request,pcall(data_store[request.FunctionName],data_store,unpack(request.Args,request.NArgs)))
+end
+
+--returns inline_success,status,...
 local function RunDoRequest(attempt_inline,request)
 	if attempt_inline then
 		return DoRequest(attempt_inline,request)
@@ -189,7 +192,7 @@ end
 local function BudgetCheck(function_name)
 	return 0<DataStoreService:GetRequestBudgetForRequestType(RequestTypeEnumFromFunctionName[function_name])
 end
---returns inline_success,status,result
+--returns inline_success,status,...
 local function ProcessRequest(attempt_inline,request)
 	--if lane is empty, try immediately
 	local lane=GetLane(request)
@@ -232,6 +235,14 @@ local function ValidateRequest(store_name,store_scope,request_fn_name,request_fl
 	end
 end
 
+local function VarArgBlockingRequest(request,inline_success,...)
+	if inline_success then
+		return ...
+	else
+		request.Thread=corunning()
+		return coyield()
+	end
+end
 local function BlockingRequest(store_name,store_scope,request_fn_name,request_flags,...)
 	ValidateRequest(store_name,store_scope,request_fn_name,request_flags)
 	local request={
@@ -242,15 +253,17 @@ local function BlockingRequest(store_name,store_scope,request_fn_name,request_fl
 		Args={...},
 		NArgs=select("#",...),
 	}
-	local inline_success,status,result=ProcessRequest(true,request)
-	if inline_success then
-		return status,unpack(result)
-	else
-		request.Thread=corunning()
-		return coyield()
-	end
+	return VarArgBlockingRequest(request,ProcessRequest(true,request))
 end
 
+local function VarArgCallbackRequest(request,Thread,inline_success,...)
+	if inline_success then
+		--unreachable
+		resumePrintErr(Thread,...)
+	else
+		request.Thread=Thread
+	end
+end
 local function CallbackRequest(callback,store_name,store_scope,request_fn_name,request_flags,...)
 	ValidateRequest(store_name,store_scope,request_fn_name,request_flags)
 	local request={
@@ -261,14 +274,7 @@ local function CallbackRequest(callback,store_name,store_scope,request_fn_name,r
 		Args={...},
 		NArgs=select("#",...),
 	}
-	local Thread=cocreate(callback)
-	local inline_success,status,result=ProcessRequest(false,request)
-	if inline_success then
-		--unreachable
-		resumePrintErr(Thread,status,unpack(result))
-	else
-		request.Thread=Thread
-	end
+	return VarArgCallbackRequest(request,cocreate(callback),ProcessRequest(false,request))
 end
 
 local function ProcessLane(attempt_inline,lane)
