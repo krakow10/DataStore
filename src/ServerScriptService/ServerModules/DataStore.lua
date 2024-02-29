@@ -186,6 +186,9 @@ local function RunDoRequest(attempt_inline,request)
 	end
 end
 
+local function BudgetCheck(function_name)
+	return 0<DataStoreService:GetRequestBudgetForRequestType(RequestTypeEnumFromFunctionName[function_name])
+end
 --returns inline_success,status,result
 local function ProcessRequest(attempt_inline,request)
 	--if lane is empty, try immediately
@@ -193,7 +196,7 @@ local function ProcessRequest(attempt_inline,request)
 	if lane then
 		--if there is no requests ahead of this one, try it immediately
 		if lane:GetLength()==0 then
-			if 0<DataStoreService:GetRequestBudgetForRequestType(RequestTypeEnumFromFunctionName[request.FunctionName]) then
+			if BudgetCheck(request.FunctionName) then
 				return RunDoRequest(attempt_inline,request)
 			else
 				return false
@@ -203,7 +206,11 @@ local function ProcessRequest(attempt_inline,request)
 			return false
 		end
 	else
-		return RunDoRequest(attempt_inline,request)
+		if BudgetCheck(request.FunctionName) then
+			return RunDoRequest(attempt_inline,request)
+		else
+			return false
+		end
 	end
 end
 
@@ -268,8 +275,7 @@ local function ProcessLane(attempt_inline,lane)
 	while true do
 		local front_request=lane:PeekFront()
 		if front_request then
-			local RequestFunctionName=front_request.FunctionName
-			if 0<DataStoreService:GetRequestBudgetForRequestType(RequestTypeEnumFromFunctionName[RequestFunctionName]) then
+			if BudgetCheck(front_request.FunctionName) then
 				RunDoRequest(attempt_inline,lane:PopFront())
 			else
 				break
