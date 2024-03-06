@@ -16,7 +16,7 @@ local ReplicatedStorage=game:GetService'ReplicatedStorage'
 
 local RingBufferClass=require(ReplicatedStorage.SharedModules.RingBuffer)
 
-local DataStoreService=game:GetService'DataStore'
+local DataStoreService=game:GetService'DataStoreService'
 
 --[[per key limit
 Property 	Size Limit
@@ -67,7 +67,7 @@ end
 local RequestTypeEnumFromRequestType={}
 for i=1,NRequestTypes do
 	local RequestType=RequestTypes[i]
-	RequestTypeEnumFromRequestType[RequestType]=Enum.RequestType[RequestType]
+	RequestTypeEnumFromRequestType[RequestType]=Enum.DataStoreRequestType[RequestType]
 end
 
 --DataStore:GetRequestBudgetForRequestType
