@@ -13,7 +13,7 @@ local coresume=coroutine.resume
 local corunning=coroutine.running
 
 local ReplicatedStorage=game:GetService'ReplicatedStorage'
-
+local Class=require(ReplicatedStorage.SharedModules.Class)
 local RingBufferClass=require(ReplicatedStorage.SharedModules.RingBuffer)
 
 local DataStoreService=game:GetService'DataStoreService'
@@ -243,19 +243,6 @@ local function VarArgBlockingRequest(request,inline_success,...)
 		return coyield()
 	end
 end
-local function BlockingRequest(store_name,store_scope,request_fn_name,request_flags,...)
-	ValidateRequest(store_name,store_scope,request_fn_name,request_flags)
-	local request={
-		StoreName=store_name,
-		StoreScope=store_scope,
-		FunctionName=request_fn_name,
-		Flags=request_flags,
-		Args={...},
-		NArgs=select("#",...),
-	}
-	return VarArgBlockingRequest(request,ProcessRequest(true,request))
-end
-
 local function VarArgCallbackRequest(request,Thread,inline_success,...)
 	if inline_success then
 		--unreachable
@@ -264,17 +251,22 @@ local function VarArgCallbackRequest(request,Thread,inline_success,...)
 		request.Thread=Thread
 	end
 end
-local function CallbackRequest(callback,store_name,store_scope,request_fn_name,request_flags,...)
+
+local RequestClass=Class()
+function RequestClass:Constructor(store_name,store_scope,request_fn_name,request_flags,...)
 	ValidateRequest(store_name,store_scope,request_fn_name,request_flags)
-	local request={
-		StoreName=store_name,
-		StoreScope=store_scope,
-		FunctionName=request_fn_name,
-		Flags=request_flags,
-		Args={...},
-		NArgs=select("#",...),
-	}
-	return VarArgCallbackRequest(request,cocreate(callback),ProcessRequest(false,request))
+	self.StoreName=store_name
+	self.StoreScope=store_scope
+	self.FunctionName=request_fn_name
+	self.Flags=request_flags
+	self.Args={...}
+	self.NArgs=select("#",...)
+end
+function RequestClass:Blocking()
+	return VarArgBlockingRequest(self,ProcessRequest(true,self))
+end
+function RequestClass:Callback(callback)
+	return VarArgCallbackRequest(self,cocreate(callback),ProcessRequest(false,self))
 end
 
 local function ProcessLane(attempt_inline,lane)
@@ -322,6 +314,5 @@ end
 
 return {
 	RequestFlags=RequestFlags,
-	BlockingRequest=BlockingRequest,
-	CallbackRequest=CallbackRequest,
+	Request=RequestClass,
 }
