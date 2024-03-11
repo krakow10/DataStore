@@ -176,7 +176,7 @@ end
 --returns inline_success,status,...
 local function DoRequest(attempt_inline,request)
 	local data_store=DataStoreService:GetDataStore(request.StoreName,request.StoreScope)
-	return VarArgDoRequest(attempt_inline,request,pcall(data_store[request.FunctionName],data_store,unpack(request.Args,request.NArgs)))
+	return VarArgDoRequest(attempt_inline,request,pcall(data_store[request.FunctionName],data_store,unpack(request.Args,1,request.NArgs)))
 end
 
 --returns inline_success,status,...
