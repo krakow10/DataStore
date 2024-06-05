@@ -1,4 +1,5 @@
 local type=type
+local warn=warn
 local error=error
 local pcall=pcall
 local select=select
@@ -129,10 +130,10 @@ for i=1,NRequestTypes do
 	delivery_request_queue_lanes[i]=RingBufferClass()
 end
 
-local function resumePrintErr(...)
+local function resumeWarnErr(...)
 	local NoErr,ErrMsg=coresume(...)
 	if not NoErr then
-		print("error:",ErrMsg)
+		warn("DataStore error:",ErrMsg)
 	end
 end
 
@@ -150,8 +151,7 @@ end
 
 local function VarArgDoRequest(attempt_inline,request,status,...)
 	if not status then
-		print("DataStore request failed:",request.StoreName,request.StoreScope,request.FunctionName)
-		print("Error:",...)
+		warn("DataStore request failed:",request.StoreName,request.StoreScope,request.FunctionName,"\nError:",...)
 		--if REQUEST_GUARANTEE_DELIVERY bit is set, push the request into a lane
 		if band(request.Flags,REQUEST_GUARANTEE_DELIVERY)~=0 then
 			local lane=GetLane(request)
@@ -167,7 +167,7 @@ local function VarArgDoRequest(attempt_inline,request,status,...)
 	end
 	local Thread=request.Thread
 	if Thread then
-		resumePrintErr(Thread,status,...)
+		resumeWarnErr(Thread,status,...)
 	else
 		return attempt_inline,status,...
 	end
@@ -184,7 +184,7 @@ local function RunDoRequest(attempt_inline,request)
 	if attempt_inline then
 		return DoRequest(attempt_inline,request)
 	else
-		resumePrintErr(cocreate(DoRequest),attempt_inline,request)
+		resumeWarnErr(cocreate(DoRequest),attempt_inline,request)
 		return false
 	end
 end
@@ -246,7 +246,7 @@ end
 local function VarArgCallbackRequest(request,Thread,inline_success,...)
 	if inline_success then
 		--unreachable
-		resumePrintErr(Thread,...)
+		resumeWarnErr(Thread,...)
 	else
 		request.Thread=Thread
 	end
@@ -292,7 +292,7 @@ task.spawn(function()
 		--so that it is guaranteed to process each request to completion
 		local success,err=pcall(ProcessLane,true,global_ordered_request_queue)
 		if not success then
-			print("ProcessLane (ordered) Error:",err)
+			warn("ProcessLane (ordered) Error:",err)
 		end
 		wait()
 	end
@@ -305,7 +305,7 @@ for lane=1,NRequestTypes do
 			--requests in these queues will necessarily not care about order
 			local success,err=pcall(ProcessLane,false,delivery_request_queue_lane)
 			if not success then
-				print("ProcessLane (delivery) Error:",err)
+				warn("ProcessLane (delivery) Error:",err)
 			end
 			wait()
 		end
