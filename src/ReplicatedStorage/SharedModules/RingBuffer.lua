@@ -3,7 +3,6 @@ local remove=table.remove
 local move=table.move
 
 local ReplicatedStorage=game:GetService'ReplicatedStorage'
-
 local Class=require(ReplicatedStorage.SharedModules.Class)
 
 local RingBufferClass=Class()
@@ -27,7 +26,7 @@ function RingBufferClass:PopFront()
 	local value=Buffer[FrontIndex]
 	--write changes
 	Buffer[FrontIndex]=nil
-	self.FrontIndex=FrontIndex+1
+	self.FrontIndex=FrontIndex%self.Capacity+1
 	self.Length=Length-1
 	return value
 end
@@ -40,18 +39,18 @@ function RingBufferClass:PushBack(value)
 		local Capacity=self.Capacity
 		local NewCapacity=2*Capacity
 		local FrontIndex=self.FrontIndex
-		local NewFrontIndex=FrontIndex+Capacity
 		if self.BackIndex<FrontIndex then
+			local NewFrontIndex=FrontIndex+Capacity
 			--move elements
 			move(Buffer,FrontIndex,Capacity,NewFrontIndex,Buffer)
 			--write nil values (from beyond the end of the buffer) to moved elements in order to assist gc by erasing strong references
 			move(Buffer,NewCapacity+1,NewCapacity+(Capacity-FrontIndex)+1,FrontIndex,Buffer)
+			self.FrontIndex=NewFrontIndex
 		end
-		self.FrontIndex=NewFrontIndex
 		self.Capacity=NewCapacity
 	end
 	--write value to back
-	local NewBackIndex=self.BackIndex+1
+	local NewBackIndex=self.BackIndex%self.Capacity+1
 	self.Buffer[NewBackIndex]=value
 	self.BackIndex=NewBackIndex
 	self.Length=Length+1
@@ -59,7 +58,7 @@ end
 
 function RingBufferClass:Constructor()
 	self.FrontIndex=1
-	self.BackIndex=1
+	self.BackIndex=0
 	self.Length=0
 	self.Capacity=1
 	self.Buffer={}
