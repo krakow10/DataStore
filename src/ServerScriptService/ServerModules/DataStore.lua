@@ -4,7 +4,7 @@ local error=error
 local pcall=pcall
 local select=select
 local unpack=unpack
-local tostring=tostring
+local assert=assert
 
 local band=bit32.band
 
@@ -217,24 +217,6 @@ local function ProcessRequest(attempt_inline,request)
 	end
 end
 
-local function ValidateRequest(store_name,store_scope,request_fn_name,request_flags)
-	if type(store_name)~="string" then
-		error("Expected string for 'store_name', found "..type(store_name))
-	end
-	if type(store_scope)~="string" then
-		error("Expected string for 'store_scope', found "..type(store_scope))
-	end
-	if type(request_fn_name)~="string" then
-		error("Expected string for 'request_fn_name', found "..type(request_fn_name))
-	end
-	if not FunctionIdFromFunctionName[request_fn_name] then
-		error("Invalid request_fn_name: "..tostring(request_fn_name))
-	end
-	if type(request_flags)~="number" then
-		error("Expected number for 'request_flags', found "..type(request_flags))
-	end
-end
-
 local function VarArgBlockingRequest(request,inline_success,...)
 	if inline_success then
 		return ...
@@ -252,21 +234,58 @@ local function VarArgCallbackRequest(request,Thread,inline_success,...)
 	end
 end
 
-local RequestClass=Class()
-function RequestClass:Constructor(store_name,store_scope,request_fn_name,request_flags,...)
-	ValidateRequest(store_name,store_scope,request_fn_name,request_flags)
+local RequestBuilderClass=Class()
+function RequestBuilderClass:GetDataStore()
+	assert(type(self.StoreName)=="string","GetDataStore failed: Request.StoreName is not a string")
+	assert(type(self.StoreScope)=="string","GetDataStore failed: Request.StoreScope is not a string")
+	return self.StoreName,self.StoreScope
+end
+function RequestBuilderClass:SetDataStore(store_name,store_scope)
+	assert(self.StoreName==nil,"SetDataStore failed: Attempt to double-set Request.StoreName")
+	assert(self.StoreScope==nil,"SetDataStore failed: Attempt to double-set Request.StoreScope")
+	assert(type(store_name)=="string","SetDataStore failed: Value is not a string")
+	assert(type(store_scope)=="string","SetDataStore failed: Value is not a string")
 	self.StoreName=store_name
 	self.StoreScope=store_scope
-	self.FunctionName=request_fn_name
+end
+function RequestBuilderClass:GetFlags()
+	assert(type(self.Flags)=="number","GetDataStore failed: Request.Flags is not a number")
+	return self.Flags
+end
+function RequestBuilderClass:SetFlags(request_flags)
+	assert(self.Flags==nil,"SetDataStore failed: Attempt to double-set Request.Flags")
+	assert(type(request_flags)=="number","SetDataStore failed: Value is not a number")
 	self.Flags=request_flags
+end
+function RequestBuilderClass:GetQuery()
+	assert(type(self.FunctionName)=="string","GetQuery failed: Request.FunctionName is not a string")
+	assert(type(self.Args)=="table","GetQuery failed: Request.Args is not a table")
+	assert(type(self.NArgs)=="number","GetQuery failed: Request.NArgs is not a number")
+	return self.FunctionName,self.Args,self.NArgs
+end
+function RequestBuilderClass:SetQuery(request_fn_name,...)
+	assert(self.FunctionName==nil,"SetQuery failed: Attempt to double-set Request.FunctionName")
+	assert(FunctionIdFromFunctionName[request_fn_name]~=nil,"SetQuery failed: Invalid FunctionName")
+	self.FunctionName=request_fn_name
+	--not going to bother with argument validation, you better pray you got your arguments right
 	self.Args={...}
+	--this is necessary because lua tables can have holes, #t cannot be trusted if some arguments are nil
 	self.NArgs=select("#",...)
 end
-function RequestClass:Blocking()
-	return VarArgBlockingRequest(self,ProcessRequest(true,self))
+local function build_request(RequestBuilder)
+	local request={}
+	request.StoreName,request.StoreScope=RequestBuilder:GetDataStore()
+	request.Flags=RequestBuilder:GetFlags()
+	request.FunctionName,request.Args,request.NArgs=RequestBuilder:GetQuery()
+	return request
 end
-function RequestClass:Callback(callback)
-	return VarArgCallbackRequest(self,cocreate(callback),ProcessRequest(false,self))
+function RequestBuilderClass:Wait()
+	local request=build_request(self)
+	return VarArgBlockingRequest(request,ProcessRequest(true,request))
+end
+function RequestBuilderClass:Once(callback)
+	local request=build_request(self)
+	return VarArgCallbackRequest(request,cocreate(callback),ProcessRequest(false,request))
 end
 
 local function ProcessLane(attempt_inline,lane)
@@ -314,5 +333,5 @@ end
 
 return {
 	RequestFlags=RequestFlags,
-	Request=RequestClass,
+	Request=RequestBuilderClass,
 }
