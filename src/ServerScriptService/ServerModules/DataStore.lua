@@ -100,7 +100,7 @@ local RequestTypeEnumFromFunctionName={
 --	RemoveVersionAsync=		Enum.DataStoreRequestType.RemoveVersionAsync,
 }
 
---convert to and 
+--convert to and from int
 local RequestFunctionNames={
 	"GetAsync",
 	"SetAsync",
