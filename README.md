@@ -7,14 +7,14 @@ This repository provides an interface to Roblox's DataStore which can be request
 - Make a request as soon as possible and do not retry on error.
 
 `REQUEST_GUARANTEE_ORDER` = 1
-- All requests with this flag run in the same global order they were called.  Pending requests are queued.
+- All requests with this flag run in the same global order they were called.  Pending requests are put into a global queue.
 
 `REQUEST_GUARANTEE_DELIVERY` = 2
-- Retry indefinitely until the request succeeds.
+- Retry indefinitely until the request succeeds.  Failed requests are queued separately by request type and retried round-robin style until they succeed.
 
 ### Combining flags
 `REQUEST_GUARANTEE_ORDER + REQUEST_GUARANTEE_DELIVERY` = 3
-- You can combine the flags to guarantee both order and delivery.
+- You can combine the flags to guarantee both order and delivery.  These requests go into a globally ordered queue handled one at a time until each one succeeds.  This is the same global queue as without the delivery guarantee, but requests without the guarantee delivery flag are not retried.
 
 ### How to use
 The main interface is `DataStore.Request` (referred to below as `RequestBuilderClass`) which is a class for building datastore requests with type checking.  Request flags are accessed like `DataStore.RequestFlags.REQUEST_GUARANTEE_DELIVERY`
