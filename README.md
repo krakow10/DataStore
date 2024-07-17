@@ -9,6 +9,8 @@ This repository provides an interface to Roblox's DataStore which can be request
 You can combine the flags to guarantee both order and delivery.
 - REQUEST_GUARANTEE_ORDER + REQUEST_GUARANTEE_DELIVERY
 
+The main interface is `DataStore.Request` which is a class for building datastore requests with type checking.  Request flags are accessed like `DataStore.RequestFlags.REQUEST_GUARANTEE_DELIVERY`
+
 ## Examples
 
 Fetching the current balance for a currency module
