@@ -80,6 +80,11 @@ function InventoryClass:AddItem(ItemID)
 end
 ```
 
+## Games
+This module is used in the following games:
+- [Scream Stream](https://www.roblox.com/games/17121106661/Scream-Stream-HORROR)
+- [Flip Obby](https://www.roblox.com/games/16540589387/Flip-Obby)
+
 #### License
 
 <sup>
