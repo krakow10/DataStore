@@ -4,7 +4,7 @@ DataStore with Guarantees
 This repository provides an interface to Roblox's DataStore which can be requested to guarantee certain properties:
 
 `REQUEST_GUARANTEE_NOTHING` = 0
-- Make a request as soon as possible and return the result whether or not it reaches the datastore.
+- Make a request as soon as possible and do not retry on error.
 
 `REQUEST_GUARANTEE_ORDER` = 1
 - All requests with this flag run in the same global order they were called.  Pending requests are queued.
