@@ -20,6 +20,7 @@ local function FetchBalances(UserId)
 	local Key=get_datastore_key(UserId)
 	local Request=RequestBuilderClass()
 	Request:SetDataStore(DATASTORE_NAME,DATASTORE_SCOPE)
+	--Guarantee that currency updates happen in order, maybe the user just bought currency and the request is still in transit.
 	--Do not guarantee delivery, we do not care what the balance is in 5 minutes
 	--Simply try the request again later with another call to FetchBalances
 	Request:SetFlags(REQUEST_GUARANTEE_ORDER)
