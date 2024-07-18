@@ -28,12 +28,13 @@ local function FetchBalances(UserId)
 	local Key=get_datastore_key(UserId)
 	local Request=RequestBuilderClass()
 	Request:SetDataStore(DATASTORE_NAME,DATASTORE_SCOPE)
-	--Guarantee that currency updates happen in order, maybe the user just bought currency and the request is still in transit.
+	--Guarantee that currency updates happen in order, maybe the user
+	--just bought currency and the request is still in transit.
 	--Do not guarantee delivery, we do not care what the balance is in 5 minutes
 	--Simply try the request again later with another call to FetchBalances
 	Request:SetFlags(REQUEST_GUARANTEE_ORDER)
 	Request:SetQuery("GetAsync",Key)
-	--Wait method takes no arguments and blocks execution, returning the reponse
+	--Wait method takes no arguments and blocks execution, returning the response
 	local success,Balances=Request:Wait()
 	if success then
 		if Balances==nil then
@@ -52,9 +53,11 @@ function InventoryClass:AddItem(ItemID)
 	--permanently add the item to the player's inventory
 	local Request=RequestBuilderClass()
 	Request:SetDataStore(DATASTORE_NAME,DATASTORE_SCOPE)
-	--Updating the inventory depends on the previous contents of the inventory, so guarantee order
+	--Updating the inventory depends on the previous contents of the inventory,
+	--so guarantee order
 	--Technically you could add items in any order but this is an example...
-	--Adding an item to a user's inventory should succeed even if it takes 5 minutes, so guarantee delivery
+	--Adding an item to a user's inventory should succeed even if it takes 5 minutes,
+	--so guarantee delivery
 	Request:SetFlags(REQUEST_GUARANTEE_ORDER+REQUEST_GUARANTEE_DELIVERY)
 	Request:SetQuery("UpdateAsync",self.Key,function(Inventory)
 		if Inventory==nil then
